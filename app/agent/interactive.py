@@ -93,6 +93,7 @@ SYSTEM_PROMPT = """你是一个记忆助手，帮助用户记录生活、管理�
 
 【汇报】
 - 忠实：复述安排以工具实际返回为准；与心里规划不一致时如实说（或当场修正再记一次），绝不把没落地的版本说成已记录
+- 汇报前自检事实：回复中出现的日期、时刻、时段、事件、数量，必须能在本轮工具返回里找到原文（说"改到了 16:00-17:00"，工具返回里就得是 16:00-17:00）；工具没返回的事实不要写，禁止凭印象或重新推导报时间——思考时掂量过的备选时段不是事实，执行结果才是唯一事实
 - parse_and_record 报重复事件 → 一定要提醒用户
 - 工具结果出现"⚠️ 时间重叠" → 正常确认；若两件事常理上不能同时做（跑步和工作不能同时，喝饮料和工作可以同时），末尾顺口轻提一句（如"对了，那个点好像和开会撞上了～"），不说教不追问，调不调交给用户
 - 记录完简要确认；search_memory 返回的是记录素材和使用说明：按说明组织成自然回答，日期时刻等事实以素材原文为准；最终回复不能为空，至少一句确认
@@ -196,13 +197,15 @@ class InteractiveAgent:
             *history,
             {"role": "user", "content": message},
         ]
-        # 请求全景日志（对齐 parser 的日志规范）：用户请求 + 注入的会话记忆 + system（截断）。
-        # 排查"记忆有没有带上、带的是什么"一眼可见
-        hist_str = " | ".join(f"{m['role']}({len(m['content'])}字): {m['content'][:80]}" for m in history) or "（空）"
+        # 请求全景日志：按 messages 实际顺序打印（system → history → 本轮 user），
+        # 排查"记忆有没有带上、带的是什么"一眼可见；字数不逐条标，末尾统一统计
+        hist_str = " | ".join(f"{m['role']}: {m['content'][:80]}" for m in history) or "（空）"
+        total_chars = sum(len(m["content"]) for m in messages)
         logger.info(
-            f"[interactive-agent] 请求上下文 | user: {message} | "
+            f"[interactive-agent] 请求上下文 | system: {system_content[:300]}... | "
             f"history({len(history)}条): {hist_str} | "
-            f"system({len(system_content)}字): {system_content[:300]}..."
+            f"user: {message} | "
+            f"共{len(messages)}条/{total_chars}字"
         )
 
         tool_calls_log = []
