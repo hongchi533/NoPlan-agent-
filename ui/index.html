@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆助手</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/journal.css">
+    <!-- 思源黑体异步加载：media=print 让它不进渲染阻塞链（外网卡也不白屏），到货后切回 all -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"></noscript>
+</head>
+<body>
+    <!-- 手帐模式开关（皮肤层可切换，默认关） -->
+    <button id="journalToggle" title="手帐模式" onclick="toggleJournal()">📔</button>
+    <!-- 横版宽屏开关（布局层可切换，默认关，≥1100px 生效） -->
+    <button id="wideToggle" title="横版宽屏" onclick="toggleWide()">↔️</button>
+    <div class="app">
+        <!-- 头部 -->
+        <header class="header">
+            <h1> ⏳ 记忆助手</h1>
+            <p class="subtitle">不是管理时间，是感知时间的质感</p>
+        </header>
+
+        <!-- Tab 导航 -->
+        <nav class="tab-nav">
+            <button class="tab active" data-view="home" onclick="switchTab('home')">🏠 首页</button>
+            <button class="tab" data-view="tasks" onclick="switchTab('tasks')">⏰ 提醒</button>
+            <button class="tab" data-view="month" onclick="switchTab('month')">📅 月</button>
+            <button class="tab" data-view="week" onclick="switchTab('week')">📊 周</button>
+            <button class="tab" data-view="day" onclick="switchTab('day')">📋 日</button>
+        </nav>
+
+        <!-- 到点提醒横幅（系统通知的页内兜底，固定顶部滑入） -->
+        <div id="remindBanner" class="remind-banner"></div>
+
+        <!-- ====== 首页 ====== -->
+        <div id="viewHome" class="view-panel">
+            <!-- 横版分栏锚点：.home-col 在原版下 display:contents（结构透明，竖排不变），
+                 横版（body.wide + ≥1100px）下变为三列：左=交互 中=主场 右=未来+心情 -->
+            <div class="home-col home-col-left">
+                <!-- 输入框 -->
+                <section class="input-section">
+                    <div class="input-box">
+                        <input type="text" id="userInput" placeholder="说一句话：做了什么、想做什么、心情、回忆、或提醒..." autocomplete="off">
+                        <button id="sendBtn" onclick="handleSend()">
+                            <span id="sendText">发送</span>
+                            <span id="sendLoading" class="hidden">⏳</span>
+                        </button>
+                    </div>
+                    <!-- 排队提示：处理中再发的消息即时收走、在此显示排队进度 -->
+                    <p id="queueHint" class="task-hint hidden"></p>
+                </section>
+
+                <!-- Agent 回复 -->
+                <section id="agentReply" class="agent-reply hidden">
+                    <h3>🤖 回复</h3>
+                    <!-- 回复卡容器：排队系列每轮追加新卡不覆盖；空闲后的新请求整段替换；JS 侧保最近 5 张 -->
+                    <div id="replyLog"></div>
+                    <div class="reply-debug hidden" id="replyDebug"></div>
+                </section>
+
+                <!-- 召回区域 -->
+                <section id="recallSection" class="recall-section hidden">
+                    <div id="lastYearToday" class="recall-card hidden">
+                        <h3>📅 去年今天</h3>
+                        <div id="lastYearContent"></div>
+                    </div>
+                    <div id="timeCapsule" class="recall-card hidden">
+                        <h3>⏳ 时光胶囊</h3>
+                        <div id="capsuleContent"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="home-col home-col-main">
+                <!-- 每日总览（07:00 触发后落盘，当日有效；没生成就不占位） -->
+                <section id="overviewSection" class="schedule-section hidden">
+                    <h3>🌤 今日总览 <span class="date-label">每日 7 点生成</span></h3>
+                    <div id="overviewText" class="overview-card"></div>
+                </section>
+
+                <!-- 今日日程 -->
+                <section class="schedule-section">
+                    <h3>📋 今日日程 <span id="todayDate" class="date-label"></span></h3>
+                    <div id="eventList" class="event-list">
+                        <p class="empty-hint">还没有记录，说点什么吧 ✨</p>
+                    </div>
+                </section>
+            </div>
+
+            <div class="home-col home-col-right">
+                <!-- 未来日程 -->
+                <section class="schedule-section future-section">
+                    <h3>📅 未来日程</h3>
+                    <div id="futureList" class="event-list">
+                        <p class="empty-hint">暂无计划</p>
+                    </div>
+                </section>
+
+                <!-- 心情记录 -->
+                <section class="mood-section">
+                    <h3>💫 心情</h3>
+                    <div id="moodList" class="mood-list">
+                        <p class="empty-hint">今天还没记录心情</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ====== 提醒事项 ====== -->
+        <div id="viewTasks" class="view-panel hidden">
+            <section class="input-section">
+                <div class="input-box">
+                    <input type="text" id="taskText" placeholder="需要设置什么提醒事项(^-^)？" autocomplete="off">
+                    <input type="datetime-local" id="taskAt" class="task-dt">
+                    <button id="taskBtn" onclick="handleAddTask()">添加</button>
+                </div>
+                <p class="task-hint">手动设置提醒</p>
+            </section>
+            <section class="schedule-section">
+                <h3>⏰ 提醒事项</h3>
+                <div id="taskList" class="event-list"><p class="empty-hint">还没有定时任务</p></div>
+            </section>
+        </div>
+
+        <!-- ====== 月视图 ====== -->
+        <div id="viewMonth" class="view-panel hidden">
+            <div class="cal-header">
+                <button class="cal-nav" onclick="navMonth(-1)">◀</button>
+                <span id="monthTitle" class="cal-title"></span>
+                <button class="cal-nav" onclick="navMonth(1)">▶</button>
+            </div>
+            <div class="month-weekdays">
+                <div class="month-weekday">一</div>
+                <div class="month-weekday">二</div>
+                <div class="month-weekday">三</div>
+                <div class="month-weekday">四</div>
+                <div class="month-weekday">五</div>
+                <div class="month-weekday">六</div>
+                <div class="month-weekday">日</div>
+            </div>
+            <div id="monthCells" class="month-grid"></div>
+        </div>
+
+        <!-- ====== 周视图 ====== -->
+        <div id="viewWeek" class="view-panel hidden">
+            <div class="cal-header">
+                <button class="cal-nav" onclick="navWeek(-1)">◀</button>
+                <span id="weekTitle" class="cal-title"></span>
+                <button class="cal-nav" onclick="navWeek(1)">▶</button>
+            </div>
+            <div id="weekGrid" class="week-grid"></div>
+        </div>
+
+        <!-- ====== 日视图 ====== -->
+        <div id="viewDay" class="view-panel hidden">
+            <div class="cal-header">
+                <button class="cal-nav" onclick="navDay(-1)">◀</button>
+                <span id="dayTitle" class="cal-title"></span>
+                <button class="cal-nav" onclick="navDay(1)">▶</button>
+            </div>
+            <!-- 全天事件侧边栏：不属于任何时刻的事在时间轴右侧独立小模块 -->
+            <div class="day-layout">
+                <div class="day-main">
+                    <div id="dayTimeline" class="day-timeline"></div>
+                </div>
+                <aside id="allDayBar" class="all-day-side hidden"></aside>
+            </div>
+            <!-- 心情：时间轴外的固定底栏，不随刻度滚动；常驻（空日子也留框，同主页） -->
+            <div id="dayMood" class="day-mood-section"></div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

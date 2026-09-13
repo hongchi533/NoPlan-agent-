@@ -1,0 +1,145 @@
+/* ─── 手帐模式皮肤（body.journal 作用域，默认关闭；开关按钮见 index.html/app.js）──
+   布局与 DOM 完全不动，只叠视觉层：冷白纸底+细噪点、干净白卡、轻胶带、思源黑体。
+   数据色（标签/事件色块）仍唯一来自 app.js 的 TAG_COLORS——这里只用纸品中性色。
+   定调：奶油暖白——统一圆角、软弥散阴影、细描边近乎隐形、薰衣草紫强调。 */
+/* 思源黑体不在 CSS 里 @import——@import 是渲染阻塞链，外部 CSS 卡住就白屏；
+   改由 index.html 异步引（media=print 切换），首帧永远不等外网，字体到了再 swap */
+
+body.journal {
+    /* 纸底：奶油黄暖白 + 噪点纹理提供颗粒 */
+    background-color: #f7f3ed;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>");
+    color: #453f35;
+    --j-ink: #4c453a;       /* 暖墨 */
+    --j-line: #e6ddd0;      /* 细描边：浅米灰，近乎隐形 */
+    --j-paper: #ffffff;     /* 模块纸面：纯白衬奶油底 */
+    --j-accent: #f6f2fb;    /* 浅薰衣草面：配深墨字（白字在其上不可读） */
+    /* 思源黑体（Google Fonts 发行名 Noto Sans SC，同一字库）；断网退化到苹方/雅黑 */
+    --j-font: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ── 手写体：标题、日期、Tab、翻页标题 ── */
+body.journal .header h1,
+body.journal .subtitle,
+body.journal .tab,
+body.journal h3,
+body.journal .date-label,
+body.journal .future-date-label,
+body.journal .cal-title,
+body.journal .all-day-title,
+body.journal .event-item,       /* 事件条目整行走手写体（含心情/各视图色块） */
+body.journal .mood-item,
+body.journal .week-block,
+body.journal .day-block-title,
+body.journal .day-block-note,
+body.journal .all-day-chip,
+body.journal .empty-hint { font-family: var(--j-font); }
+body.journal .header h1 { color: #3a342b; }
+body.journal .subtitle { color: #857c6f; }
+body.journal .cal-title { color: #3a342b; }
+
+/* ── Tab：保持一整条导航栏（不分块）——激活项是栏内薰衣草药丸 ── */
+body.journal .tab-nav {
+    background: var(--j-paper);
+    border: 1px solid var(--j-line);
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(146,132,112,0.07);
+}
+body.journal .tab { background: transparent; color: #857c6f; box-shadow: none; }
+body.journal .tab.active { background: var(--j-accent); color: #4c453a; font-weight: 500; }
+body.journal .tab:hover:not(.active) { background: #f1ebdf; }
+
+/* ── 模块框：干净白卡——统一圆角、软弥散阴影、细描边，留白给足 ── */
+body.journal .schedule-section,
+body.journal .mood-section {
+    position: relative;
+    background: var(--j-paper);
+    border: 1px solid var(--j-line);
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 12px rgba(146,132,112,0.07);
+}
+body.journal .schedule-section h3,
+body.journal .mood-section h3 { color: var(--j-ink); }
+
+/* 日视图心情底栏：与主页心情一模一样的白卡（同圆角/描边/阴影），盖掉暖渐变与黄线 */
+body.journal .day-mood-section {
+    position: relative;
+    background: var(--j-paper);
+    border: 1px solid var(--j-line);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(146,132,112,0.07);
+    padding: 14px 16px;
+}
+
+/* 轻胶带：只贴心情模块（主页 + 日视图同一条）——更薄更透、统一薰衣草族，留手帐记号不压干净感 */
+body.journal .mood-section::before,
+body.journal .day-mood-section::before {
+    content: ""; position: absolute; top: -7px; left: 24px;
+    width: 60px; height: 14px;
+    background: rgba(196,186,230,0.50);       /* 薰衣草轻胶带 */
+    transform: rotate(1.5deg);
+    box-shadow: 0 1px 2px rgba(146,132,112,0.10);
+}
+
+/* ── 事件行：延续"虚实只在边框"的语言，落到纸面 ── */
+body.journal .event-done { background: var(--j-paper); border: 1px solid #e7ded0; box-shadow: 0 1px 4px rgba(146,132,112,0.05); }
+body.journal .event-plan { background: transparent; border: 1px dashed #d9cfbd; box-shadow: none; }
+
+/* ── 输入框：像在本子上写字 ── */
+body.journal .input-box {
+    position: relative;
+    background: var(--j-paper);
+    border: 1px solid var(--j-line);
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(146,132,112,0.07);
+}
+body.journal .input-box input { font-family: var(--j-font); color: var(--j-ink); }
+body.journal .input-box button {
+    background: var(--j-accent);
+    color: #4c453a; font-weight: 500;   /* 浅薰衣草底配深墨字 */
+    border-radius: 10px;
+}
+body.journal .input-box button:hover { background: #e2d9f5; }
+body.journal .input-box button:disabled { background: #cfc6b8; }
+
+/* ── 贴进本子的卡片：干净白卡 + 更轻的雾蓝胶带 ── */
+body.journal .reply-card,
+body.journal .recall-card,
+body.journal .overview-card {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid var(--j-line);
+    border-radius: 14px;
+    box-shadow: 0 1px 8px rgba(146,132,112,0.06);
+}
+body.journal .reply-card::before,
+body.journal .recall-card::before {
+    content: ""; position: absolute; top: -7px; left: 22px;
+    width: 68px; height: 15px;
+    background: rgba(196,186,230,0.38);        /* 薰衣草轻胶带（更淡的一档） */
+    transform: rotate(-2deg);
+    box-shadow: 0 1px 2px rgba(146,132,112,0.10);
+}
+body.journal .reply-card::before { background: rgba(196,186,230,0.50); transform: rotate(1.5deg); }
+
+/* ── 日历视图：纸面上的本子页 ── */
+body.journal .week-col { background: var(--j-paper); box-shadow: 0 2px 10px rgba(146,132,112,0.07); }
+body.journal .month-weekday { color: #857c6f; font-family: var(--j-font); }
+body.journal .day-hour-row { border-top: 1px solid #ede7da; }
+body.journal .day-hour-label { color: #a99f90; font-family: var(--j-font); }
+
+/* ── 开关按钮：两种模式下都在，纸上微歪小方块 ── */
+#journalToggle {
+    position: fixed; top: 14px; right: 14px; z-index: 50;
+    width: 38px; height: 38px; font-size: 18px; line-height: 1;
+    background: #fff; border: 1.5px solid #cfcfcf; border-radius: 10px;
+    cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transition: all 0.2s;
+}
+#journalToggle:hover { transform: rotate(-4deg); }
+body.journal #journalToggle {
+    background: #efe8dc; border-color: var(--j-line);
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(146,132,112,0.10);
+}
